@@ -1,0 +1,46 @@
+#compdef claude
+#
+# Dynamic zsh completion for the `claude` CLI (Claude Code).
+#
+# Like the bash script, this parses `claude --help` at runtime and caches the
+# result per version (under $XDG_CACHE_HOME/claude-completion), so completion
+# always matches the installed `claude` instead of a hard-coded flag list.
+#
+# Install: place this file (named `_claude`) in a directory on $fpath, e.g.
+#   ${XDG_DATA_HOME:-~/.local/share}/zsh/site-functions/_claude
+# and make sure that dir is added to fpath *before* `compinit` runs.
+
+local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/claude-completion"
+local ver="${$(claude --version 2>/dev/null)%% *}"
+local words_file="$cache_dir/words-${ver:-unknown}"
+
+if [[ ! -s $words_file ]]; then
+    local help
+    help="$(claude --help 2>/dev/null)" || return 1
+    mkdir -p $cache_dir 2>/dev/null
+    {
+        print -r -- $help | grep -oE -- '--[a-zA-Z][a-zA-Z0-9-]*'
+        print -r -- $help | awk '/^Commands:/{f=1; next} f && /^  [a-z]/{print $1}' | sed 's/|.*//'
+    } | sort -u > $words_file
+fi
+
+# Path-taking options fall back to file/dir completion.
+case ${words[CURRENT-1]} in
+    --add-dir)
+        _files -/
+        return
+        ;;
+    --settings|--mcp-config|--debug-file|--system-prompt-file|--append-system-prompt-file)
+        _files
+        return
+        ;;
+esac
+
+local -a _all _opts _cmds
+_all=( ${(f)"$(< $words_file)"} )
+_opts=( ${(M)_all:#--*} )   # keep --options
+_cmds=( ${_all:#-*} )       # drop options -> subcommands
+
+_alternative \
+    'options:option:compadd -a _opts' \
+    'commands:subcommand:compadd -a _cmds'
