@@ -1,0 +1,55 @@
+# Bash completion for the `claude` CLI (Claude Code).
+#
+# Lazy-loaded by bash-completion the first time you complete `claude`.
+# Instead of hard-coding a flag list (which goes stale every Claude Code
+# release), it parses `claude --help` at runtime and caches the result
+# per version under $XDG_CACHE_HOME/claude-completion.
+#
+# Install: drop this file as
+#   ~/.local/share/bash-completion/completions/claude
+# (or run install.sh). No ~/.bashrc edit needed.
+
+_claude_cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/claude-completion"
+
+_claude_load_words() {
+    local ver cache help opts cmds
+    ver="$(claude --version 2>/dev/null | awk '{print $1}')"
+    cache="$_claude_cache_dir/words-${ver:-unknown}"
+
+    if [[ -s "$cache" ]]; then
+        cat "$cache"
+        return
+    fi
+
+    help="$(claude --help 2>/dev/null)" || return
+    # Long/short options anywhere in the help text (handles "--a, --b" pairs).
+    opts="$(printf '%s\n' "$help" | grep -oE -- '--[a-zA-Z][a-zA-Z0-9-]*')"
+    # Subcommands: first token of each indented line in the Commands: section.
+    cmds="$(printf '%s\n' "$help" \
+        | awk '/^Commands:/{f=1; next} f && /^  [a-z]/{print $1}' \
+        | sed 's/|.*//')"
+
+    mkdir -p "$_claude_cache_dir" 2>/dev/null
+    printf '%s\n%s\n' "$opts" "$cmds" | sort -u | tee "$cache" 2>/dev/null
+}
+
+_claude() {
+    local cur prev
+    _init_completion || return
+
+    # File/dir completion for options that clearly take a path.
+    case "$prev" in
+        --add-dir)
+            _filedir -d
+            return
+            ;;
+        --settings|--mcp-config|--debug-file|--system-prompt-file|--append-system-prompt-file)
+            _filedir
+            return
+            ;;
+    esac
+
+    COMPREPLY=( $(compgen -W "$(_claude_load_words)" -- "$cur") )
+}
+
+complete -F _claude claude
