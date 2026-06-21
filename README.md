@@ -17,6 +17,20 @@ cd bash-completion-for-claude
 ./install.sh
 ```
 
+By default `install.sh` detects your current shell (from `$SHELL`) and
+installs just that one:
+
+```bash
+./install.sh          # detect current shell and install it
+./install.sh bash     # install for a specific shell
+./install.sh zsh
+./install.sh fish
+./install.sh all      # install for all three
+```
+
+If the detected shell is not one of bash/zsh/fish, it tells you and exits;
+install explicitly with one of the arguments above.
+
 Then, in a new shell:
 
 ```
@@ -24,7 +38,7 @@ claude --<Tab>      # options:     --model --resume --print ...
 claude <Tab>        # subcommands: agents auth mcp plugin update ...
 ```
 
-`install.sh` installs all three:
+Install locations:
 
 | shell | installed to | loading |
 |-------|--------------|---------|
